@@ -1,0 +1,435 @@
+#include <iostream>
+#include <string>
+#include <iomanip> 
+using namespace std;
+
+const int MAX_USERS = 100; 
+const int MAX_ITEMS = 500;    
+
+string users[MAX_USERS];     
+string passwords[MAX_USERS];
+int userRoles[MAX_USERS];      
+double userPoints[MAX_USERS];  
+int userJmlh = 0;             
+
+int iDbarang[MAX_ITEMS];  
+string invJenis[MAX_ITEMS];   
+double invBerat[MAX_ITEMS];  
+string invTanggal[MAX_ITEMS]; 
+int invStatus[MAX_ITEMS];    
+int itemCount = 0;             
+
+// --database kategori
+const int MAX_CATEGORIES = 20;
+string itemCategories[MAX_CATEGORIES]; 
+double categoryPrices[MAX_CATEGORIES]; 
+int categoryCount = 0;
+
+//  ini buat data awal, biar ga kosongan
+void inisialisasiData() {
+    users[0] = "admin"; passwords[0] = "admin123"; userRoles[0] = 1; userPoints[0] = 0;
+    users[1] = "fadhil"; passwords[1] = "fadhil123"; userRoles[1] = 0; userPoints[1] = 15000;
+    users[2] = "daiva"; passwords[2] = "daiva123"; userRoles[2] = 0; userPoints[2] = 50000;
+    users[3] = "ari"; passwords[3] = "ari123"; userRoles[3] = 0; userPoints[3] = 75000;
+
+    userJmlh = 4; 
+
+    // data barang awalan juga, biar ga kosongan kaya hati admin
+    iDbarang[0] = 1; invJenis[0] = "Kabel";   invBerat[0] = 2.5; invTanggal[0] = "29-11-2025"; invStatus[0] = 0; // Menunggu
+    iDbarang[1] = 2; invJenis[1] = "Monitor"; invBerat[1] = 5.0; invTanggal[1] = "30-11-2025"; invStatus[1] = 1; // Refurbished
+    
+    itemCount = 2;
+
+    // Kategori
+    itemCategories[0] = "Kabel Tembaga"; categoryPrices[0] = 7000;
+    itemCategories[1] = "Monitor/LCD";   categoryPrices[1] = 15000;
+    itemCategories[2] = "HP Rusak";      categoryPrices[2] = 50000;
+    itemCategories[3] = "PCB/Mainboard"; categoryPrices[3] = 85000;
+    itemCategories[4] = "Elektronik Lain"; categoryPrices[4] = 3000;
+    categoryCount = 5;
+
+    cout << "[SYSTEM] Database berhasil ditambhakan. " << endl;
+}
+
+// --- FITUR NASABAH ---
+
+void registerNasabah() {
+    if (userJmlh >= MAX_USERS) {
+        cout << "Error: Database User Penuh!" << endl;
+        return;
+    }
+
+    string newName, newPass;
+    cout << "\n--- REGISTRASI NASABAH ---" << endl;
+    cout << "Username (tanpa spasi): "; cin >> newName;
+    cout << "Password: "; cin >> newPass;
+
+    users[userJmlh] = newName;
+    passwords[userJmlh] = newPass;
+    userRoles[userJmlh] = 0; // Nasabah
+    userPoints[userJmlh] = 0;
+    userJmlh++;
+
+    cout << "Registrasi Berhasil!" << endl;
+}
+
+void setorBarang(int userID) {
+    if (itemCount >= MAX_ITEMS) {
+        cout << "Error: Gudang Penuh! Hubungi Admin." << endl;
+        return;
+    }
+
+    cout << "\n--- SETOR SAMPAH ELEKTRONIK ---" << endl;
+    cout << "Pilih Jenis Barang:" << endl;
+    for (int i = 0; i < categoryCount; i++) {
+        cout << i + 1 << ". " << itemCategories[i]
+             << " (Rp " << categoryPrices[i] << "/kg)" << endl;
+    }
+
+    int pilihanKategori;
+    cout << "Masukkan Nomor Pilihan: ";
+    cin >> pilihanKategori;
+
+    if (cin.fail()) {
+        cin.clear(); cin.ignore(1000, '\n');
+        cout << "Input harus angka!" << endl;
+        return;
+    }
+
+    if (pilihanKategori < 1 || pilihanKategori > categoryCount) {
+        cout << "Pilihan tidak valid!" << endl;
+        return;
+    }
+
+    int idx = pilihanKategori - 1;
+    string jenis = itemCategories[idx];
+    double hargaSaatIni = categoryPrices[idx];
+
+    double berat;
+    cout << "Berat Barang (Kg): ";
+    cin >> berat;
+    
+    //  validasi input
+    if (cin.fail()) {
+        cin.clear(); cin.ignore(1000, '\n');
+        cout << "Input berat salah!" << endl;
+        return;
+    }
+
+    string tanggal;
+    cout << "Tanggal Transaksi (DD-MM-YYYY): ";
+    cin.ignore(); 
+    getline(cin, tanggal);
+
+    // ngitung poin
+    double poinDapat = berat * hargaSaatIni;
+    userPoints[userID] += poinDapat;
+
+    // simpan ke Parallel Array 
+    iDbarang[itemCount] = userID;
+    invJenis[itemCount] = jenis;
+    invBerat[itemCount] = berat;
+    invTanggal[itemCount] = tanggal;
+    invStatus[itemCount] = 0; // 0 = Menunggu
+
+    itemCount++;
+
+    cout << "---------------------------------" << endl;
+    cout << "Sukses! Barang: " << jenis << " (Rp " << hargaSaatIni << ")" << endl;
+    cout << "Poin ditambahkan: " << poinDapat << endl;
+    cout << "Total Poin Anda: " << userPoints[userID] << endl;
+    cout << "Status Barang: Menunggu Verifikasi Admin" << endl;
+}
+
+void lihatPoinSaya(int userID) {
+    cout << "\n--- INFO AKUN ---" << endl;
+    cout << "User: " << users[userID] << endl;
+    cout << "Saldo Poin Saat Ini: Rp " << userPoints[userID] << endl;
+}
+
+// --- FITUR ADMIN ---
+
+void prosesBarang() {
+    cout << "\n--- PROSES BARANG MENUNGGU ---" << endl;
+    cout << "ID\t| User\t| Jenis\t\t| Berat\t| Status" << endl;
+    cout << "----------------------------------------------------" << endl;
+
+    bool foundMenunggu = false;
+    for (int i = 0; i < itemCount; i++) {
+        // Cek status klo 0 = Menunggu
+        if (invStatus[i] == 0) {
+            int ownerID = iDbarang[i]; 
+            cout << i << "\t| " << users[ownerID] << "\t| "
+                 << invJenis[i] << "\t| "
+                 << invBerat[i] << "Kg\t| Menunggu" << endl;
+            foundMenunggu = true;
+        }
+    }
+
+    if (!foundMenunggu) {
+        cout << "tidak ada barang Menunggu saat ini." << endl;
+        return;
+    }
+
+    int targetIndex;
+    cout << "\nMasukkan ID Barang (Angka pertama di kiri) untuk diproses (-1 batal): ";
+    cin >> targetIndex;
+
+
+    if (cin.fail()) {
+        cin.clear(); cin.ignore(1000, '\n');
+        cout << "Input harus angka." << endl;
+        return;
+    }
+
+    if (targetIndex >= 0 && targetIndex < itemCount && invStatus[targetIndex] == 0) {
+        cout << "Pilih Status Baru:" << endl;
+        cout << "1. Refurbished (Layak Pakai)" << endl;
+        cout << "2. Recycled (Didaur Ulang)" << endl;
+        int statusPilih;
+        cin >> statusPilih;
+
+        if (statusPilih == 1) {
+            invStatus[targetIndex] = 1; // Update integer status
+            cout << "Status diubah menjadi Refurbished." << endl;
+        } else if (statusPilih == 2) {
+            invStatus[targetIndex] = 2; // Update integer status
+            cout << "Status diubah menjadi Recycled." << endl;
+        } else {
+            cout << "Pilihan tidak valid." << endl;
+        }
+    } else if (targetIndex != -1) {
+        cout << "ID Barang salah atau sudah diproses." << endl;
+    }
+}
+
+// algoritma: bubble sort
+void laporanTop5() {
+    // array sementara
+    string tempUsers[MAX_USERS];
+    double tempPoints[MAX_USERS];
+    int count = userJmlh;
+
+    for (int i = 0; i < count; i++) {
+        tempUsers[i] = users[i];
+        tempPoints[i] = userPoints[i];
+    }
+
+    for (int i = 0; i < count - 1; i++) {
+        for (int j = 0; j < count - i - 1; j++) {
+            if (tempPoints[j] < tempPoints[j + 1]) {
+                // Tukar Poin
+                double swapPoin = tempPoints[j];
+                tempPoints[j] = tempPoints[j + 1];
+                tempPoints[j + 1] = swapPoin;
+
+                // Tukar Username
+                string swapUser = tempUsers[j];
+                tempUsers[j] = tempUsers[j + 1];
+                tempUsers[j + 1] = swapUser;
+            }
+        }
+    }
+
+    cout << "\n--- TOP 5 USER POIN TERTINGGI ---" << endl;
+    int limit = (count < 5) ? count : 5; 
+    for (int i = 0; i < limit; i++) {
+        cout << (i + 1) << ". " << tempUsers[i] << " \t: " << fixed << setprecision(0) << tempPoints[i] << " Poin" << endl;
+    }
+}
+
+void cariTransaksi() {
+    string searchDate;
+    cout << "\n--- CARI TRANSAKSI ---" << endl;
+    cout << "Masukkan Tanggal (YYYY-MM-DD): ";
+    cin >> searchDate;
+
+    cout << "\nHasil Pencarian untuk: " << searchDate << endl;
+    bool found = false;
+
+    for (int i = 0; i < itemCount; i++) {
+        if (invTanggal[i] == searchDate) {
+            // Konversi status int ke string untuk display
+            string statusStr;
+            if(invStatus[i] == 0) statusStr = "Menunggu";
+            else if(invStatus[i] == 1) statusStr = "Refurbished";
+            else statusStr = "Recycled";
+
+            int ownerID = iDbarang[i];
+            cout << "- Barang: " << invJenis[i]
+                 << " (" << invBerat[i] << "kg) oleh "
+                 << users[ownerID] << " [Status: " << statusStr << "]" << endl;
+            found = true;
+        }
+    }
+
+    if (!found) cout << "Tidak ditemukan transaksi pada tanggal tersebut." << endl;
+}
+
+void updateHarga() {
+    cout << "\n--- UPDATE HARGA PASAR ---" << endl;
+    cout << "Daftar Harga Saat Ini:" << endl;
+    for(int i = 0; i < categoryCount; i++) {
+        cout << i + 1 << ". " << itemCategories[i]
+             << " -> Rp " << categoryPrices[i] << "/kg" << endl;
+    }
+
+    cout << "0. Kembali" << endl;
+    cout << "Pilih Nomor Barang: ";
+    int pilihan;
+    cin >> pilihan;
+
+    if (pilihan > 0 && pilihan <= categoryCount) {
+        int idx = pilihan - 1;
+        cout << "Harga " << itemCategories[idx] << " saat ini: Rp " << categoryPrices[idx] << endl;
+        cout << "Masukkan Harga Baru: ";
+        double hargaBaru;
+        cin >> hargaBaru;
+
+        if(!cin.fail()) {
+            categoryPrices[idx] = hargaBaru;
+            cout << "Harga berhasil diperbarui." << endl;
+        } else {
+             cin.clear(); cin.ignore(1000, '\n');
+             cout << "Input harga salah." << endl;
+        }
+    }
+}
+
+// --- MENU SYSTEM ---
+
+int login() {
+    string inputUser, inputPass;
+    cout << "\n--- LOGIN ---" << endl;
+    cout << "Username: "; cin >> inputUser;
+    cout << "Password: "; cin >> inputPass;
+
+    for (int i = 0; i < userJmlh; i++) {
+        if (users[i] == inputUser && passwords[i] == inputPass) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+void userMenu(int index) {
+    int choice;
+    do {
+        cout << "\n=== DASHBOARD NASABAH (" << users[index] << ") ===" << endl;
+        cout << "1. Setor Barang (Tambah Poin)" << endl;
+        cout << "2. Lihat Poin Saya" << endl;
+        cout << "3. Logout" << endl;
+        cout << "Pilih: ";
+        cin >> choice;
+
+        if (cin.fail()) {
+             cin.clear(); cin.ignore(1000, '\n');
+             choice = -1; 
+        }
+
+        if (choice == 1) setorBarang(index);
+        else if (choice == 2) lihatPoinSaya(index);
+        else if (choice == 3) cout << "Logging out..." << endl;
+        else cout << "Menu tidak valid." << endl;
+    } while (choice != 3);
+}
+
+void lihatDaftarHarga() {
+    cout << "\n--- DAFTAR HARGA SAMPAH ---" << endl;
+    for (int i = 0; i < categoryCount; i++) {
+        cout << (i + 1) << ". " << itemCategories[i]
+             << " = Rp " << categoryPrices[i] << "/kg" << endl;
+    }
+}
+
+void tambahKategoriBaru() {
+    if (categoryCount >= MAX_CATEGORIES) {
+        cout << "Gagal: Kapasitas kategori penuh." << endl;
+        return;
+    }
+
+    cout << "\n--- TAMBAH JENIS BARANG BARU ---" << endl;
+    string namaBaru;
+    double hargaBaru;
+
+    cout << "Nama Barang: ";
+    cin.ignore();
+    getline(cin, namaBaru); 
+
+    cout << "Harga per Kg: ";
+    cin >> hargaBaru;
+
+    itemCategories[categoryCount] = namaBaru;
+    categoryPrices[categoryCount] = hargaBaru;
+    categoryCount++;
+
+    cout << "Sukses menambahkan " << namaBaru << endl;
+}
+
+void adminMenu(int index) {
+    int choice;
+    do {
+        cout << "\n=== ADMIN PANEL (" << users[index] << ") ===" << endl;
+        cout << "1. Proses Barang Menunggu" << endl;
+        cout << "2. Laporan Top 5 User" << endl;
+        cout << "3. Cari Transaksi (Tanggal)" << endl;
+        cout << "4. Update Harga Sampah" << endl;
+        cout << "5. Lihat Daftar Harga" << endl;
+        cout << "6. Tambah Barang Baru" << endl;
+        cout << "0. Logout" << endl;
+        cout << "Pilih: ";
+        cin >> choice;
+
+        if (cin.fail()) {
+             cin.clear(); cin.ignore(1000, '\n');
+             choice = -1;
+        }
+
+        if (choice == 1) prosesBarang();
+        else if (choice == 2) laporanTop5();
+        else if (choice == 3) cariTransaksi();
+        else if (choice == 4) updateHarga();
+        else if (choice == 5) lihatDaftarHarga();
+        else if (choice == 6) tambahKategoriBaru();
+        else if (choice == 0) cout << "Logging out..." << endl;
+        else cout << "Menu tidak valid." << endl;
+    } while (choice != 0);
+}
+
+int main() {
+    inisialisasiData();
+    int pilihan;
+
+    while (true) {
+        cout << "\n=== ECOVOLT E-WASTE BANK ===" << endl;
+        cout << "1. Login" << endl;
+        cout << "2. Registrasi Nasabah" << endl;
+        cout << "3. Keluar" << endl;
+        cout << "Pilih: ";
+        cin >> pilihan;
+
+        if (cin.fail()) { 
+            cin.clear(); cin.ignore(1000, '\n');
+            cout << "Input harus angka!" << endl;
+            continue;
+        }
+
+        if (pilihan == 1) {
+            int idx = login();
+            if (idx != -1) {
+                if (userRoles[idx] == 1) adminMenu(idx);
+                else userMenu(idx);
+            } else {
+                cout << "Login Gagal! Cek username/password." << endl;
+            }
+        } else if (pilihan == 2) {
+            registerNasabah();
+        } else if (pilihan == 3) {
+            cout << "Terima kasih telah menggunakan EcoVolt." << endl;
+            break;
+        } else {
+            cout << "Pilihan salah." << endl;
+        }
+    }
+    return 0;
+}
